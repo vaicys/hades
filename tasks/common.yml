@@ -1,0 +1,18 @@
+---
+- name: upgrade all packages
+  dnf:
+    name: "*"
+    state: latest
+    update_cache: yes
+
+- name: cleanup packages
+  dnf:
+    autoremove: yes
+
+- name: mount external hard drive
+  mount:
+    path: "{{ media_root }}"
+    src: "UUID={{ external_harddrive_uuid }}"
+    fstype: ext4
+    state: mounted
+    

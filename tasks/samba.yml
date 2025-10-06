@@ -1,0 +1,79 @@
+---
+- name: create share paths
+  file:
+    path: "{{ media_root }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    state: directory
+    mode: 02775
+    recurse: yes
+  loop: "{{ shares }}"
+  loop_control:
+    label: share
+
+- name: create share paths
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    state: directory
+    mode: 02775
+    recurse: yes
+  loop: "{{ shares }}"
+  loop_control:
+    label: share
+
+- name: setup selinux context
+  shell: semanage fcontext --add --type "samba_share_t" "{{ media_root }}(/.*)?" 
+
+- name: restore selinux default security contexts
+  shell: restorecon -R {{ media_root }}
+
+# - name: find all files
+#   find:
+#     path: "{{ media_root }}"
+#     recurse: yes
+#     exclude: plexmediaserver
+#   register: found_items
+
+# - name: reset file permissions
+#   file:
+#     path: "{{ item.path }}"
+#     state: file
+#     mode: 0664
+#   loop: "{{ found_items.files }}"
+#   when: item.isreg and item.mode != '0664' # regular file
+#   loop_control:
+#     label: file
+
+- name: ensure samba is installed
+  dnf:
+    name: samba
+    state: latest
+
+- name: configure samba
+  template:
+    src: templates/smb.conf.j2
+    dest: /etc/samba/smb.conf
+  notify:
+    - restart samba
+
+- name: ensure samba is running
+  service:
+    name: smb
+    enabled: yes
+    state: started
+
+- name: ensure nmbd is running
+  service:
+    name: nmb
+    enabled: yes
+    state: started
+
+- name: set samba passwords for each user
+  shell: "smbpasswd -a {{ item.username }}"
+  args:
+    stdin: "{{ item.password }}\n{{ item.password }}"
+  loop: "{{ users }}"
+  loop_control:
+    label: user

@@ -1,0 +1,14 @@
+---
+- name: allow samba
+  firewalld:
+    service: samba
+    permanent: yes
+    immediate: yes
+    state: enabled
+
+- name: allow plex media server
+  firewalld:
+    service: plex
+    permanent: yes
+    immediate: yes
+    state: enabled

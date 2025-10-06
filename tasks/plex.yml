@@ -1,0 +1,45 @@
+---
+- name: add plex repo
+  template:
+    src: templates/plex.repo.j2
+    dest: /etc/yum.repos.d/plex.repo
+
+- name: ensure plex media server is installed
+  dnf:
+    name: plexmediaserver
+    state: latest
+
+- name: stop plex media server
+  service:
+    name: plexmediaserver
+    state: stopped
+
+- name: add plex user to torrent-users
+  user:
+    name: plex
+    groups: torrent-users
+    append: yes
+
+- name: set correct owner and group
+  file:
+    path: "{{ media_root }}/plexmediaserver"
+    recurse: yes
+    owner: plex
+    group: plex
+    mode: 02775
+    state: directory
+
+- file:
+    path: /var/lib/plexmediaserver
+    state: absent
+
+- file:
+    src: "{{ media_root }}/plexmediaserver"
+    dest: /var/lib/plexmediaserver
+    group: plex
+    state: link
+
+- name: ensure plex media server is started
+  service:
+    name: plexmediaserver
+    state: started
