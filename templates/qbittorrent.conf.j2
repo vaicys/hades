@@ -1,12 +1,59 @@
+[Application]
+FileLogger\Age=1
+FileLogger\AgeType=1
+FileLogger\Backup=true
+FileLogger\DeleteOld=true
+FileLogger\Enabled=false
+FileLogger\MaxSizeBytes=66560
+FileLogger\Path=/home/qbittorrent/.local/share/qBittorrent/logs
+MemoryWorkingSetLimit=4096
+
 [AutoRun]
 enabled=true
 program=chmod -R g+rw \"%R\"
 
+[BitTorrent]
+Session\AddExtensionToIncompleteFiles=true
+Session\AddTorrentStopped=false
+Session\AddTorrentToTopOfQueue=true
+Session\AlternativeGlobalDLSpeedLimit=102400
+Session\AlternativeGlobalUPSpeedLimit=102400
+Session\DefaultSavePath={{ media_root }}/Incoming
+Session\ExcludedFileNames=
+Session\IgnoreSlowTorrentsForQueueing=false
+Session\IncludeOverheadInLimits=true
+Session\MaxActiveDownloads=4
+Session\MaxActiveTorrents=1000
+Session\MaxActiveUploads=50
+Session\MaxConnections=1000
+Session\MaxConnectionsPerTorrent=200
+Session\MaxUploads=100
+Session\MaxUploadsPerTorrent=20
+Session\Port=8999
+Session\QueueingSystemEnabled=true
+Session\SSL\Port=43221
+Session\ShareLimitAction=Stop
+Session\SlowTorrentsDownloadRate=1025
+Session\SlowTorrentsUploadRate=1024
+Session\TempPath={{ media_root }}/Incoming/temp
+Session\TempPathEnabled=false
+Session\UseAlternativeGlobalSpeedLimit=false
+
+[Core]
+AutoDeleteAddedTorrentFile=Never
+
 [LegalNotice]
 Accepted=true
 
+[Meta]
+MigrationVersion=8
+
 [Network]
-Cookies=@Invalid()
+PortForwardingEnabled=false
+Proxy\HostnameLookupEnabled=false
+Proxy\Profiles\BitTorrent=true
+Proxy\Profiles\Misc=true
+Proxy\Profiles\RSS=true
 
 [Preferences]
 Advanced\RecheckOnCompletion=false
@@ -27,7 +74,7 @@ Downloads\UseIncompleteExtension=true
 DynDNS\DomainName=changeme.dyndns.org
 DynDNS\Enabled=false
 DynDNS\Password=
-DynDNS\Service=0
+DynDNS\Service=DynDNS
 DynDNS\Username=
 General\Locale=en
 MailNotification\email=
@@ -64,3 +111,7 @@ WebUI\SecureCookie=true
 WebUI\ServerDomains=*
 WebUI\SessionTimeout=3600
 WebUI\UseUPnP=false
+
+[RSS]
+AutoDownloader\DownloadRepacks=true
+AutoDownloader\SmartEpisodeFilter=s(\\d+)e(\\d+), (\\d+)x(\\d+), "(\\d{4}[.\\-]\\d{1,2}[.\\-]\\d{1,2})", "(\\d{1,2}[.\\-]\\d{1,2}[.\\-]\\d{4})"
