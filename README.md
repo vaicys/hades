@@ -1,4 +1,4 @@
-# Ansible playbook for home Ubuntu Server
+# Ansible playbook for home server
 
 To install the latest Ansible version, follow the [official](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) instructions.
 

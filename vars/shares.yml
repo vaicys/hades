@@ -7,6 +7,10 @@ shares:
     path: "{{ media_root }}/Anime"
     owner: qbittorrent
     group: torrent-users
+  - name: Anime series
+    path: "{{ media_root }}/Anime series"
+    owner: qbittorrent
+    group: torrent-users
   - name: Comedy
     path: "{{ media_root }}/Comedy"
     owner: qbittorrent
