@@ -1,18 +1,6 @@
 ---
 - name: create share paths
   file:
-    path: "{{ media_root }}"
-    owner: "{{ item.owner }}"
-    group: "{{ item.group }}"
-    state: directory
-    mode: 02775
-    recurse: yes
-  loop: "{{ shares }}"
-  loop_control:
-    label: share
-
-- name: create share paths
-  file:
     path: "{{ item.path }}"
     owner: "{{ item.owner }}"
     group: "{{ item.group }}"
@@ -23,28 +11,38 @@
   loop_control:
     label: share
 
+- name: ensure acl package is present
+  dnf:
+    name: acl
+    state: present
+
+- name: set correct acls on share paths
+  acl:
+    path: "{{ item.path }}"
+    etype: group
+    permissions: rwx
+    state: present
+    recursive: yes
+  loop: "{{ shares }}"
+  loop_control:
+    label: share
+
+- name: set default acls on share paths
+  acl:
+    path: "{{ item.path }}"
+    etype: group
+    permissions: rwx
+    default: yes
+    state: present
+  loop: "{{ shares }}"
+  loop_control:
+    label: share
+
 - name: setup selinux context
   shell: semanage fcontext --add --type "samba_share_t" "{{ media_root }}(/.*)?" 
 
 - name: restore selinux default security contexts
   shell: restorecon -R {{ media_root }}
-
-# - name: find all files
-#   find:
-#     path: "{{ media_root }}"
-#     recurse: yes
-#     exclude: plexmediaserver
-#   register: found_items
-
-# - name: reset file permissions
-#   file:
-#     path: "{{ item.path }}"
-#     state: file
-#     mode: 0664
-#   loop: "{{ found_items.files }}"
-#   when: item.isreg and item.mode != '0664' # regular file
-#   loop_control:
-#     label: file
 
 - name: ensure samba is installed
   dnf:
