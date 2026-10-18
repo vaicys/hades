@@ -1,0 +1,39 @@
+---
+- name: install nfs-utils
+  dnf:
+    name: nfs-utils
+    state: present
+
+- name: configure exports
+  vars:
+     nfs_export_options: rw,sync,no_subtree_check,no_root_squash
+  lineinfile:
+    path: /etc/exports
+    line: "{{ media_root }} {{ network_subnet }}({{ nfs_export_options }})"
+    regexp: "^{{ media_root | regex_escape() }}\\s+"
+    state: present
+    create: true
+    mode: "0644"
+
+- name: re-export shares
+  command:
+    cmd: exportfs -rav
+
+- name: allow nfs server in firewall
+  vars:
+    services:
+      - nfs
+      - rpc-bind
+      - mountd
+  firewalld:
+    service: "{{ item }}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{{ services }}"
+
+- name: ensure nfs-server is running
+  service:
+    name: nfs-server
+    enabled: true
+    state: started

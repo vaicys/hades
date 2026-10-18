@@ -64,18 +64,19 @@
   template:
     src: templates/qbittorrent.conf.j2
     dest:  "{{ media_root }}/qbittorrent/.config/qBittorrent/qBittorrent.conf"
-  notify:
-    - restart qbittorrent
 
 - name: configure watched folders
   template:
     src: templates/watched_folders.json.j2
     dest: "{{ media_root }}/qbittorrent/.config/qBittorrent/watched_folders.json"
-  notify:
-    - restart qbittorrent
 
 - name: ensure qbittorrent is running
   service:
     name: qbittorrent
     enabled: yes
     state: started
+
+- name: restart qbittorrent
+  service:
+    name: qbittorrent
+    state: restarted

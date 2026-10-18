@@ -43,3 +43,10 @@
   service:
     name: plexmediaserver
     state: started
+
+- name: allow plex media server
+  firewalld:
+    service: plex
+    permanent: yes
+    immediate: yes
+    state: enabled

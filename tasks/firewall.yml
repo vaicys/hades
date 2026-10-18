@@ -1,7 +1,0 @@
----
-- name: allow plex media server
-  firewalld:
-    service: plex
-    permanent: yes
-    immediate: yes
-    state: enabled

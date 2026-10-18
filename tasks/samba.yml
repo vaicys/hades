@@ -53,8 +53,6 @@
   template:
     src: templates/smb.conf.j2
     dest: /etc/samba/smb.conf
-  notify:
-    - restart samba
 
 - name: ensure samba is running
   service:
@@ -67,6 +65,11 @@
     name: nmb
     enabled: yes
     state: started
+
+- name: restart samba
+  service:
+    name: smb
+    state: restarted
 
 - name: set samba passwords for each user
   shell: "smbpasswd -a {{ item.username }}"

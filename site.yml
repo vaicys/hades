@@ -13,7 +13,4 @@
     - import_tasks: tasks/users.yml
     - import_tasks: tasks/qbittorrent.yml
     - import_tasks: tasks/plex.yml
-    - import_tasks: tasks/firewall.yml
-
-  handlers:
-    - import_tasks: handlers/services.yml
+    - import_tasks: tasks/nfs.yml
