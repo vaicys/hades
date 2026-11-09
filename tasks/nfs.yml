@@ -4,6 +4,28 @@
     name: nfs-utils
     state: present
 
+- name: ensure nfs.conf.d directory exists
+  file:
+    path: /etc/nfs.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: enable manage-gids in nfs.conf.d so server resolves supplementary groups
+  copy:
+    dest: /etc/nfs.conf.d/manage-gids.conf
+    content: |
+      [mountd]
+      manage-gids = y
+
+      [exportd]
+      manage-gids = y
+    owner: root
+    group: root
+    mode: "0644"
+  register: nfs_conf
+
 - name: configure exports
   vars:
     nfs_export_options: rw,sync,no_subtree_check,no_root_squash
@@ -38,4 +60,4 @@
   service:
     name: nfs-server
     enabled: true
-    state: started
+    state: "{{ 'restarted' if nfs_conf.changed else 'started' }}"
