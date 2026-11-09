@@ -5,7 +5,6 @@
 
   vars_files:
     - vars/users.yml
-    - vars/shares.yml
 
   tasks:
     - import_tasks: tasks/common.yml

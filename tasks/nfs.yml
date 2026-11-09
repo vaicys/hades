@@ -1,15 +1,4 @@
 ---
-- name: ensure share paths exist
-  file:
-    path: "{{ item.path }}"
-    owner: "{{ item.owner }}"
-    group: "{{ item.group }}"
-    state: directory
-    mode: "02775"
-  loop: "{{ shares }}"
-  loop_control:
-    label: "{{ item.name }}"
-
 - name: install nfs-utils
   dnf:
     name: nfs-utils
