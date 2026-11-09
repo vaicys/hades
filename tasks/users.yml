@@ -1,37 +1,11 @@
 ---
-- name: create groups
-  group:
-    name: "{{ item }}"
-    state: present
-  loop: "{{ user_groups }}"
-  loop_control:
-    label: group
-
-- name: create user accounts
+- name: ensure user accounts exist
   user:
     name: "{{ item.username }}"
-    password: "{{ item.password | password_hash('sha512') }}"
-    groups: "{{ item.groups }}"
-    append: yes
+    password: "{{ item.password | password_hash('sha512', 65534 | random(seed=item.username) | string) }}"
+    groups: "{{ item.groups | default(omit) }}"
+    shell: "{{ item.shell | default(omit) }}"
+    append: true
   loop: "{{ users }}"
   loop_control:
-    label: user
-  when: item.groups is defined
-
-- name: set user shell
-  user:
-    name: "{{ item.username }}"
-    shell: "{{ item.shell }}"
-  loop: "{{ users }}"
-  loop_control:
-    label: user
-  when: item.shell is defined
-
-- name: create groupless user accounts
-  user:
-    name: "{{ item.username }}"
-    password: "{{ item.password | password_hash('sha512') }}"
-  loop: "{{ users }}"
-  loop_control:
-    label: user
-  when: item.groups is not defined
+    label: "{{ item.username }}"

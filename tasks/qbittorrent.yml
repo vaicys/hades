@@ -4,79 +4,83 @@
     name: qbittorrent-nox
     state: latest
 
-- name: add qbittorrent user to torrent-users
+- name: ensure torrent-users group exists
+  group:
+    name: torrent-users
+    state: present
+
+- name: ensure qbittorrent user exists
   user:
     name: qbittorrent
-    groups: torrent-users
-    append: yes
+    groups:
+      - torrent-users
+    append: true
+    shell: /usr/sbin/nologin
 
 - name: write qbittorrent service file
   template:
     src: templates/qbittorrent.service.j2
     dest: /etc/systemd/system/qbittorrent.service
+  register: qbittorrent_service
 
 - name: reload systemctl daemon
   systemd_service:
-    daemon_reload: yes
+    daemon_reload: true
+  when: qbittorrent_service.changed
 
-- name: stop qbittorrent
-  service:
-    name: qbittorrent
-    state: stopped
-
-- name: set correct owner and group
+- name: ensure qbittorrent directories exist
   file:
-    path: "{{ media_root }}/qbittorrent"
-    recurse: yes
+    path: "{{ item }}"
     owner: qbittorrent
     group: qbittorrent
-    mode: 02775
+    mode: "02775"
     state: directory
+  loop:
+    - "{{ media_root }}/qbittorrent"
+    - "{{ media_root }}/qbittorrent/.config"
+    - "{{ media_root }}/qbittorrent/.config/qBittorrent"
+    - "{{ media_root }}/qbittorrent/.local"
 
 - name: create temp path
   file:
     path: "{{ media_root }}/Incoming/temp"
+    owner: qbittorrent
     group: torrent-users
     state: directory
-    mode: 02775
+    mode: "02775"
 
-- file:
-    path: /home/qbittorrent/.config
-    state: absent
-
-- file:
-    src: "{{ media_root }}/qbittorrent/.config"
-    dest: /home/qbittorrent/.config
+- name: link qbittorrent config and local directories
+  file:
+    src: "{{ media_root }}/qbittorrent/{{ item }}"
+    dest: "/home/qbittorrent/{{ item }}"
+    owner: qbittorrent
     group: qbittorrent
     state: link
-
-- file:
-    path: /home/qbittorrent/.local
-    state: absent
-
-- file:
-    src: "{{ media_root }}/qbittorrent/.local"
-    dest: /home/qbittorrent/.local
-    group: qbittorrent
-    state: link
+  loop:
+    - .config
+    - .local
 
 - name: configure qbittorrent
   template:
     src: templates/qbittorrent.conf.j2
-    dest:  "{{ media_root }}/qbittorrent/.config/qBittorrent/qBittorrent.conf"
+    dest: "{{ media_root }}/qbittorrent/.config/qBittorrent/qBittorrent.conf"
+    owner: qbittorrent
+    group: qbittorrent
+    mode: "0664"
+    force: false
+  register: qbittorrent_conf
 
 - name: configure watched folders
   template:
     src: templates/watched_folders.json.j2
     dest: "{{ media_root }}/qbittorrent/.config/qBittorrent/watched_folders.json"
+    owner: qbittorrent
+    group: qbittorrent
+    mode: "0664"
+  register: qbittorrent_watched
 
 - name: ensure qbittorrent is running
-  service:
+  systemd_service:
     name: qbittorrent
-    enabled: yes
-    state: started
-
-- name: restart qbittorrent
-  service:
-    name: qbittorrent
-    state: restarted
+    enabled: true
+    state: "{{ 'restarted' if (qbittorrent_service.changed or qbittorrent_conf.changed or qbittorrent_watched.changed) else 'started' }}"
