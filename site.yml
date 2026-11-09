@@ -5,12 +5,14 @@
 
   vars_files:
     - vars/users.yml
+    - vars/cloudflared.yml
 
   tasks:
     - import_tasks: tasks/common.yml
     - import_tasks: tasks/automatic_updates.yml
     - import_tasks: tasks/cockpit.yml
     - import_tasks: tasks/podman.yml
+    - import_tasks: tasks/cloudflared.yml
     - import_tasks: tasks/qbittorrent.yml
     - import_tasks: tasks/plex.yml
     - import_tasks: tasks/users.yml

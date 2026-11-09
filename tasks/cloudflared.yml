@@ -1,0 +1,39 @@
+---
+- name: inspect existing cloudflared podman secret
+  command:
+    cmd: podman secret inspect --showsecret cloudflared-token --format "{{ '{{' }}.SecretData{{ '}}' }}"
+  register: cloudflared_existing_secret
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  no_log: true
+
+- name: create or update cloudflared-token podman secret
+  command:
+    cmd: podman secret create --replace cloudflared-token -
+    stdin: "{{ cloudflared_tunnel_token }}"
+  when:
+    - not ansible_check_mode
+    - cloudflared_existing_secret.rc != 0 or cloudflared_existing_secret.stdout != cloudflared_tunnel_token
+  register: cloudflared_secret_updated
+  no_log: true
+
+- name: deploy cloudflared quadlet container unit
+  template:
+    src: templates/cloudflared.container.j2
+    dest: /etc/containers/systemd/cloudflared.container
+    owner: root
+    group: root
+    mode: "0644"
+  register: cloudflared_quadlet
+
+- name: reload systemd daemon to generate cloudflared quadlet unit
+  systemd_service:
+    daemon_reload: true
+  when: cloudflared_quadlet.changed
+
+- name: ensure cloudflared container service is started
+  systemd_service:
+    name: cloudflared.service
+    state: "{{ 'restarted' if (cloudflared_quadlet.changed or (cloudflared_secret_updated.changed | default(false))) else 'started' }}"
+  when: not ansible_check_mode
