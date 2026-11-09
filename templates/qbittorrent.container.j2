@@ -1,0 +1,26 @@
+[Unit]
+Description=qBittorrent Container
+After=network-online.target local-fs.target
+Wants=network-online.target
+RequiresMountsFor={{ media_root }}
+
+[Container]
+Image=lscr.io/linuxserver/qbittorrent:latest
+ContainerName=qbittorrent
+AutoUpdate=registry
+Network=host
+Environment=PUID={{ qbittorrent_user.uid }}
+Environment=PGID={{ qbittorrent_user.group }}
+Environment=UMASK=002
+Environment=WEBUI_PORT=8080
+Environment=TORRENTING_PORT=8999
+Environment=TZ={{ timezone }}
+Volume=qbittorrent-config.volume:/config:Z
+Volume={{ media_root }}:{{ media_root }}:z
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target default.target

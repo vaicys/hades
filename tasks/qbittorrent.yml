@@ -1,9 +1,4 @@
 ---
-- name: ensure qbittorrent is installed
-  dnf:
-    name: qbittorrent-nox
-    state: latest
-
 - name: ensure torrent-users group exists
   group:
     name: torrent-users
@@ -12,75 +7,102 @@
 - name: ensure qbittorrent user exists
   user:
     name: qbittorrent
+    group: torrent-users
     groups:
       - torrent-users
     append: true
     shell: /usr/sbin/nologin
+    create_home: false
+  register: qbittorrent_user
 
-- name: write qbittorrent service file
-  template:
-    src: templates/qbittorrent.service.j2
-    dest: /etc/systemd/system/qbittorrent.service
-  register: qbittorrent_service
-
-- name: reload systemctl daemon
-  systemd_service:
-    daemon_reload: true
-  when: qbittorrent_service.changed
-
-- name: ensure qbittorrent directories exist
+- name: create temp and torrents paths
   file:
     path: "{{ item }}"
-    owner: qbittorrent
-    group: qbittorrent
-    mode: "02775"
-    state: directory
-  loop:
-    - "{{ media_root }}/qbittorrent"
-    - "{{ media_root }}/qbittorrent/.config"
-    - "{{ media_root }}/qbittorrent/.config/qBittorrent"
-    - "{{ media_root }}/qbittorrent/.local"
-
-- name: create temp path
-  file:
-    path: "{{ media_root }}/Incoming/temp"
     owner: qbittorrent
     group: torrent-users
     state: directory
     mode: "02775"
-
-- name: link qbittorrent config and local directories
-  file:
-    src: "{{ media_root }}/qbittorrent/{{ item }}"
-    dest: "/home/qbittorrent/{{ item }}"
-    owner: qbittorrent
-    group: qbittorrent
-    state: link
   loop:
-    - .config
-    - .local
+    - "{{ media_root }}/Incoming"
+    - "{{ media_root }}/Incoming/temp"
+    - "{{ media_root }}/Incoming/torrents"
+
+- name: deploy qbittorrent-config quadlet volume unit
+  template:
+    src: templates/qbittorrent-config.volume.j2
+    dest: /etc/containers/systemd/qbittorrent-config.volume
+    owner: root
+    group: root
+    mode: "0644"
+  register: qbittorrent_volume_quadlet
+
+- name: deploy qbittorrent quadlet container unit
+  template:
+    src: templates/qbittorrent.container.j2
+    dest: /etc/containers/systemd/qbittorrent.container
+    owner: root
+    group: root
+    mode: "0644"
+  register: qbittorrent_quadlet
+
+- name: reload systemd daemon to generate qbittorrent quadlet units
+  systemd_service:
+    daemon_reload: true
+  when: qbittorrent_volume_quadlet.changed or qbittorrent_quadlet.changed
+
+- name: ensure qbittorrent container service is started
+  systemd_service:
+    name: qbittorrent.service
+    state: "{{ 'restarted' if (qbittorrent_volume_quadlet.changed or qbittorrent_quadlet.changed) else 'started' }}"
+  when: not ansible_check_mode
+
+- name: get qbittorrent-config volume mountpoint
+  command:
+    cmd: podman volume inspect qbittorrent-config --format "{{ '{{' }}.Mountpoint{{ '}}' }}"
+  register: qbittorrent_vol_mountpoint
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: ensure qbittorrent config directory exists in volume
+  file:
+    path: "{{ qbittorrent_vol_mountpoint.stdout }}/qBittorrent"
+    owner: qbittorrent
+    group: torrent-users
+    mode: "02775"
+    state: directory
+  when:
+    - qbittorrent_vol_mountpoint.rc == 0
+    - qbittorrent_vol_mountpoint.stdout | length > 0
 
 - name: configure qbittorrent
   template:
     src: templates/qbittorrent.conf.j2
-    dest: "{{ media_root }}/qbittorrent/.config/qBittorrent/qBittorrent.conf"
+    dest: "{{ qbittorrent_vol_mountpoint.stdout }}/qBittorrent/qBittorrent.conf"
     owner: qbittorrent
-    group: qbittorrent
+    group: torrent-users
     mode: "0664"
     force: false
-  register: qbittorrent_conf
+  when:
+    - qbittorrent_vol_mountpoint.rc == 0
+    - qbittorrent_vol_mountpoint.stdout | length > 0
 
 - name: configure watched folders
   template:
     src: templates/watched_folders.json.j2
-    dest: "{{ media_root }}/qbittorrent/.config/qBittorrent/watched_folders.json"
+    dest: "{{ qbittorrent_vol_mountpoint.stdout }}/qBittorrent/watched_folders.json"
     owner: qbittorrent
-    group: qbittorrent
+    group: torrent-users
     mode: "0664"
   register: qbittorrent_watched
+  when:
+    - qbittorrent_vol_mountpoint.rc == 0
+    - qbittorrent_vol_mountpoint.stdout | length > 0
 
-- name: ensure qbittorrent is running
+- name: restart qbittorrent container if watched folders changed
   systemd_service:
-    name: qbittorrent
-    enabled: true
-    state: "{{ 'restarted' if (qbittorrent_service.changed or qbittorrent_conf.changed or qbittorrent_watched.changed) else 'started' }}"
+    name: qbittorrent.service
+    state: restarted
+  when:
+    - not ansible_check_mode
+    - qbittorrent_watched.changed | default(false)
