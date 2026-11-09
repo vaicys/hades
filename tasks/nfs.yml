@@ -1,4 +1,15 @@
 ---
+- name: ensure share paths exist
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    state: directory
+    mode: "02775"
+  loop: "{{ shares }}"
+  loop_control:
+    label: "{{ item.name }}"
+
 - name: install nfs-utils
   dnf:
     name: nfs-utils
@@ -6,7 +17,7 @@
 
 - name: configure exports
   vars:
-     nfs_export_options: rw,sync,no_subtree_check,no_root_squash
+    nfs_export_options: rw,sync,no_subtree_check,no_root_squash
   lineinfile:
     path: /etc/exports
     line: "{{ media_root }} {{ network_subnet }}({{ nfs_export_options }})"
@@ -14,10 +25,12 @@
     state: present
     create: true
     mode: "0644"
+  register: nfs_exports
 
 - name: re-export shares
   command:
     cmd: exportfs -rav
+  when: nfs_exports.changed
 
 - name: allow nfs server in firewall
   vars:
