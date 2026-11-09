@@ -1,0 +1,81 @@
+---
+- name: ensure ethtool is installed for tailscale udp gro forwarding optimization
+  dnf:
+    name: ethtool
+    state: present
+
+- name: enable ip forwarding for tailscale subnet router
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-tailscale.conf
+    state: present
+    reload: true
+  loop:
+    - { name: "net.ipv4.ip_forward", value: "1" }
+    - { name: "net.ipv6.conf.all.forwarding", value: "1" }
+
+- name: inspect existing tailscale podman secret
+  command:
+    cmd: podman secret inspect --showsecret tailscale-authkey --format "{{ '{{' }}.SecretData{{ '}}' }}"
+  register: tailscale_existing_secret
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  no_log: true
+  when: tailscale_authkey is defined and tailscale_authkey | length > 0
+
+- name: create or update tailscale-authkey podman secret
+  command:
+    cmd: podman secret create --replace tailscale-authkey -
+    stdin: "{{ tailscale_authkey }}"
+  when:
+    - not ansible_check_mode
+    - tailscale_authkey is defined and tailscale_authkey | length > 0
+    - tailscale_existing_secret.rc != 0 or tailscale_existing_secret.stdout != tailscale_authkey
+  register: tailscale_secret_updated
+  no_log: true
+
+- name: deploy tailscale-state quadlet volume unit
+  template:
+    src: templates/tailscale-state.volume.j2
+    dest: /etc/containers/systemd/tailscale-state.volume
+    owner: root
+    group: root
+    mode: "0644"
+  register: tailscale_volume_quadlet
+
+- name: deploy tailscale quadlet container unit
+  template:
+    src: templates/tailscale.container.j2
+    dest: /etc/containers/systemd/tailscale.container
+    owner: root
+    group: root
+    mode: "0644"
+  register: tailscale_quadlet
+
+- name: reload systemd daemon to generate tailscale quadlet units
+  systemd_service:
+    daemon_reload: true
+  when: tailscale_volume_quadlet.changed or tailscale_quadlet.changed
+
+- name: ensure tailscale container service is started
+  systemd_service:
+    name: tailscale.service
+    state: "{{ 'restarted' if (tailscale_volume_quadlet.changed or tailscale_quadlet.changed or (tailscale_secret_updated.changed | default(false))) else 'started' }}"
+  when: not ansible_check_mode
+
+- name: allow tailscale wireguard port in firewall for direct connections
+  firewalld:
+    port: 41641/udp
+    permanent: true
+    immediate: true
+    state: enabled
+
+- name: trust tailscale0 interface in firewall for subnet routing
+  firewalld:
+    zone: trusted
+    interface: tailscale0
+    permanent: true
+    immediate: true
+    state: enabled

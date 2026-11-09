@@ -1,0 +1,30 @@
+[Unit]
+Description=Tailscale Subnet Router Container
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Container]
+Image=docker.io/tailscale/tailscale:latest
+ContainerName=tailscale
+AutoUpdate=registry
+Network=host
+AddCapability=CAP_NET_ADMIN CAP_NET_RAW
+AddDevice=/dev/net/tun:/dev/net/tun
+SecurityLabelDisable=true
+Environment=TS_STATE_DIR=/var/lib/tailscale
+Environment=TS_USERSPACE=false
+Environment=TS_ROUTES={{ tailscale_routes | default(ansible_facts['default_ipv4']['network'] ~ '/' ~ ansible_facts['default_ipv4']['prefix']) }}
+Environment=TS_EXTRA_ARGS=--hostname={{ inventory_hostname }}
+{% if tailscale_authkey is defined and tailscale_authkey | length > 0 %}
+Secret=tailscale-authkey,type=env,target=TS_AUTHKEY
+{% endif %}
+Volume=tailscale-state.volume:/var/lib/tailscale:Z
+
+[Service]
+ExecStartPre=-/usr/sbin/ethtool -K {{ ansible_facts['default_ipv4']['interface'] }} rx-udp-gro-forwarding on rx-gro-list off
+Restart=always
+RestartSec=5s
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target default.target
