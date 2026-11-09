@@ -1,0 +1,20 @@
+[Unit]
+Description=Home Assistant Container
+After=network-online.target local-fs.target matter-server.service
+Wants=network-online.target matter-server.service
+
+[Container]
+Image=ghcr.io/home-assistant/home-assistant:stable
+ContainerName=home-assistant
+AutoUpdate=registry
+Network=host
+Environment=TZ={{ timezone }}
+AddCapability=CAP_NET_ADMIN CAP_NET_RAW
+Volume=home-assistant-config.volume:/config:Z
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target default.target

@@ -1,0 +1,21 @@
+[Unit]
+Description=Matter Server Container
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Container]
+Image=ghcr.io/matter-js/matterjs-server:stable
+ContainerName=matter-server
+AutoUpdate=registry
+Network=host
+Environment=TZ={{ timezone }}
+Volume=matter-server-data.volume:/data:Z
+Exec=--storage-path /data --vendorid 4939 --fabricid 2 --listen-address 127.0.0.1
+
+[Service]
+ExecStartPre=/usr/bin/sysctl -q -w net.ipv6.conf.{{ ansible_facts['default_ipv4']['interface'] }}.accept_ra=2 net.ipv6.conf.{{ ansible_facts['default_ipv4']['interface'] }}.accept_ra_rt_info_max_plen=64
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target default.target

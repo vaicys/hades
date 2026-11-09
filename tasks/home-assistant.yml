@@ -1,0 +1,83 @@
+---
+- name: enable ipv6 router advertisements and route info for thread border router
+  sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/90-matter-thread.conf
+    state: present
+    reload: true
+  loop:
+    - { name: "net.ipv6.conf.all.accept_ra", value: "2" }
+    - { name: "net.ipv6.conf.default.accept_ra", value: "2" }
+    - { name: "net.ipv6.conf.{{ ansible_facts['default_ipv4']['interface'] }}.accept_ra", value: "2" }
+    - { name: "net.ipv6.conf.all.accept_ra_rt_info_max_plen", value: "64" }
+    - { name: "net.ipv6.conf.default.accept_ra_rt_info_max_plen", value: "64" }
+    - { name: "net.ipv6.conf.{{ ansible_facts['default_ipv4']['interface'] }}.accept_ra_rt_info_max_plen", value: "64" }
+
+- name: deploy matter-server-data quadlet volume unit
+  template:
+    src: templates/matter-server-data.volume.j2
+    dest: /etc/containers/systemd/matter-server-data.volume
+    owner: root
+    group: root
+    mode: "0644"
+  register: matter_volume_quadlet
+
+- name: deploy matter-server quadlet container unit
+  template:
+    src: templates/matter-server.container.j2
+    dest: /etc/containers/systemd/matter-server.container
+    owner: root
+    group: root
+    mode: "0644"
+  register: matter_quadlet
+
+- name: deploy home-assistant-config quadlet volume unit
+  template:
+    src: templates/home-assistant-config.volume.j2
+    dest: /etc/containers/systemd/home-assistant-config.volume
+    owner: root
+    group: root
+    mode: "0644"
+  register: ha_volume_quadlet
+
+- name: deploy home-assistant quadlet container unit
+  template:
+    src: templates/home-assistant.container.j2
+    dest: /etc/containers/systemd/home-assistant.container
+    owner: root
+    group: root
+    mode: "0644"
+  register: ha_quadlet
+
+- name: reload systemd daemon to generate home-assistant and matter quadlet units
+  systemd_service:
+    daemon_reload: true
+  when:
+    - matter_volume_quadlet.changed or matter_quadlet.changed or ha_volume_quadlet.changed or ha_quadlet.changed
+
+- name: ensure matter-server container service is started
+  systemd_service:
+    name: matter-server.service
+    state: "{{ 'restarted' if (matter_volume_quadlet.changed or matter_quadlet.changed) else 'started' }}"
+  when: not ansible_check_mode
+
+- name: ensure home-assistant container service is started
+  systemd_service:
+    name: home-assistant.service
+    state: "{{ 'restarted' if (ha_volume_quadlet.changed or ha_quadlet.changed) else 'started' }}"
+  when: not ansible_check_mode
+
+- name: allow home-assistant webui port in firewall
+  firewalld:
+    port: 8123/tcp
+    permanent: true
+    immediate: true
+    state: enabled
+
+- name: allow mdns in firewall for home-assistant device discovery
+  firewalld:
+    service: mdns
+    permanent: true
+    immediate: true
+    state: enabled
