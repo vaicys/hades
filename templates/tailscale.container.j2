@@ -13,6 +13,7 @@ AddDevice=/dev/net/tun:/dev/net/tun
 SecurityLabelDisable=true
 Environment=TS_STATE_DIR=/var/lib/tailscale
 Environment=TS_USERSPACE=false
+Environment=TS_BOOT_TIMEOUT=15m
 Environment=TS_ROUTES={{ tailscale_routes | default(ansible_facts['default_ipv4']['network'] ~ '/' ~ ansible_facts['default_ipv4']['prefix']) }}
 Environment=TS_EXTRA_ARGS=--hostname={{ inventory_hostname }}
 {% if tailscale_authkey is defined and tailscale_authkey | length > 0 %}
