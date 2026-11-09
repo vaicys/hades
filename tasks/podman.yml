@@ -1,10 +1,18 @@
 ---
-- name: ensure podman and container-selinux are installed
+- name: ensure podman, container-selinux, and cockpit-podman are installed
   dnf:
     name:
       - podman
       - container-selinux
+      - cockpit-podman
     state: latest
+
+- name: enable podman socket for cockpit-podman
+  systemd_service:
+    name: podman.socket
+    state: started
+    enabled: true
+  when: not ansible_check_mode
 
 - name: allow containers to use dri devices (Intel GPU) in selinux
   seboolean:

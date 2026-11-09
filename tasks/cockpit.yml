@@ -1,0 +1,23 @@
+---
+- name: ensure cockpit packages are installed
+  dnf:
+    name:
+      - cockpit
+      - cockpit-networkmanager
+      - cockpit-packagekit
+      - cockpit-selinux
+      - cockpit-storaged
+    state: latest
+
+- name: ensure cockpit socket is enabled and running
+  systemd_service:
+    name: cockpit.socket
+    state: started
+    enabled: true
+
+- name: allow cockpit in firewall
+  firewalld:
+    service: cockpit
+    permanent: true
+    immediate: true
+    state: enabled
