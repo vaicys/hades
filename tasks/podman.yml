@@ -1,0 +1,29 @@
+---
+- name: ensure podman and container-selinux are installed
+  dnf:
+    name:
+      - podman
+      - container-selinux
+    state: latest
+
+- name: allow containers to use dri devices (Intel GPU) in selinux
+  seboolean:
+    name: container_use_dri_devices
+    state: true
+    persistent: true
+  when: not ansible_check_mode
+
+- name: ensure quadlet directory exists
+  file:
+    path: /etc/containers/systemd
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: enable podman-auto-update timer for seamless upstream updates
+  systemd_service:
+    name: podman-auto-update.timer
+    state: started
+    enabled: true
+  when: not ansible_check_mode

@@ -10,7 +10,8 @@
   tasks:
     - import_tasks: tasks/common.yml
     - import_tasks: tasks/automatic_updates.yml
-    - import_tasks: tasks/users.yml
+    - import_tasks: tasks/podman.yml
     - import_tasks: tasks/qbittorrent.yml
     - import_tasks: tasks/plex.yml
+    - import_tasks: tasks/users.yml
     - import_tasks: tasks/nfs.yml

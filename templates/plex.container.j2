@@ -1,0 +1,29 @@
+[Unit]
+Description=Plex Media Server Container
+After=network-online.target local-fs.target
+Wants=network-online.target
+RequiresMountsFor={{ media_root }}
+
+[Container]
+Image=lscr.io/linuxserver/plex:latest
+ContainerName=plex
+AutoUpdate=registry
+Network=host
+Environment=PUID={{ plex_user.uid }}
+Environment=PGID={{ plex_user.group }}
+Environment=VERSION=docker
+Environment=TZ={{ timezone }}
+{% for grp in ['torrent-users', 'video', 'render'] %}
+GroupAdd={{ ansible_facts.getent_group[grp][1] }}
+{% endfor %}
+AddDevice=/dev/dri:/dev/dri
+Volume=plex-config.volume:/config:Z
+Volume={{ media_root }}:{{ media_root }}:z
+Tmpfs=/transcode
+
+[Service]
+Restart=always
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target default.target

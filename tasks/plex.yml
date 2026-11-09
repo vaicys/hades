@@ -1,52 +1,58 @@
 ---
-- name: add plex repo
-  template:
-    src: templates/plex.repo.j2
-    dest: /etc/yum.repos.d/plex.repo
+- name: ensure plex group exists
+  group:
+    name: plex
+    state: present
 
-- name: ensure plex media server is installed
-  dnf:
-    name: plexmediaserver
-    state: latest
-
-- name: stop plex media server
-  service:
-    name: plexmediaserver
-    state: stopped
-
-- name: add plex user to torrent-users
+- name: ensure plex user exists
   user:
     name: plex
-    groups: torrent-users
-    append: yes
-
-- name: set correct owner and group
-  file:
-    path: "{{ media_root }}/plexmediaserver"
-    recurse: yes
-    owner: plex
     group: plex
-    mode: 02775
-    state: directory
+    groups:
+      - torrent-users
+      - video
+      - render
+    append: true
+    shell: /usr/sbin/nologin
+    create_home: false
+  register: plex_user
 
-- file:
-    path: /var/lib/plexmediaserver
-    state: absent
+- name: look up group table for supplementary group gids
+  getent:
+    database: group
 
-- file:
-    src: "{{ media_root }}/plexmediaserver"
-    dest: /var/lib/plexmediaserver
-    group: plex
-    state: link
+- name: deploy plex-config quadlet volume unit
+  template:
+    src: templates/plex-config.volume.j2
+    dest: /etc/containers/systemd/plex-config.volume
+    owner: root
+    group: root
+    mode: "0644"
+  register: plex_volume_quadlet
 
-- name: ensure plex media server is started
-  service:
-    name: plexmediaserver
-    state: started
+- name: deploy plex quadlet container unit
+  template:
+    src: templates/plex.container.j2
+    dest: /etc/containers/systemd/plex.container
+    owner: root
+    group: root
+    mode: "0644"
+  register: plex_quadlet
 
-- name: allow plex media server
+- name: reload systemd daemon to generate quadlet units
+  systemd_service:
+    daemon_reload: true
+  when: plex_volume_quadlet.changed or plex_quadlet.changed
+
+- name: ensure plex container service is started
+  systemd_service:
+    name: plex.service
+    state: "{{ 'restarted' if (plex_volume_quadlet.changed or plex_quadlet.changed) else 'started' }}"
+  when: not ansible_check_mode
+
+- name: allow plex media server in firewall
   firewalld:
     service: plex
-    permanent: yes
-    immediate: yes
+    permanent: true
+    immediate: true
     state: enabled
