@@ -1,17 +1,44 @@
 ---
-- name: install dnf-automatic
+- name: install dnf5-plugin-automatic
   dnf:
-    name: dnf-automatic
+    name: dnf5-plugin-automatic
     state: latest
 
 - name: configure dnf-automatic
   template:
     src: templates/dnf-automatic.conf.j2
     dest: /etc/dnf/automatic.conf
+    owner: root
+    group: root
+    mode: "0644"
 
-- name: enable dnf-automatic
-  systemd:
-    name: dnf-automatic.timer
+- name: ensure dnf5-automatic.timer.d directory exists
+  file:
+    path: /etc/systemd/system/dnf5-automatic.timer.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: configure dnf5-automatic timer schedule
+  copy:
+    dest: /etc/systemd/system/dnf5-automatic.timer.d/time.conf
+    content: |
+      [Timer]
+      OnBootSec=
+      OnCalendar= 4:00
+    owner: root
+    group: root
+    mode: "0644"
+  register: dnf_timer_override
+
+- name: reload systemd daemon if dnf5-automatic timer changed
+  systemd_service:
+    daemon_reload: true
+  when: dnf_timer_override.changed
+
+- name: enable dnf5-automatic timer
+  systemd_service:
+    name: dnf5-automatic.timer
     state: started
     enabled: true
-        
