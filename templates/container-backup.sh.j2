@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SNAPSHOT_PATH="/.container-backup-snapshot"
+VOLUMES_DIR="/var/lib/containers/storage/volumes"
+
+cleanup() {
+    umount -l "${VOLUMES_DIR}" 2>/dev/null || true
+    if [ -d "${SNAPSHOT_PATH}" ]; then
+        btrfs subvolume delete "${SNAPSHOT_PATH}" >/dev/null 2>&1 || true
+    fi
+}
+trap cleanup EXIT
+
+if [ -d "${SNAPSHOT_PATH}" ]; then
+    btrfs subvolume delete "${SNAPSHOT_PATH}"
+fi
+
+# Create an atomic read-only Btrfs snapshot of the root filesystem
+btrfs subvolume snapshot -r / "${SNAPSHOT_PATH}"
+
+# Bind-mount the frozen volumes directory inside this service's private
+# mount namespace so restic records canonical /var/lib/containers/... paths
+mount --bind "${SNAPSHOT_PATH}${VOLUMES_DIR}" "${VOLUMES_DIR}"
+
+# Back up all container volumes, excluding regenerable Plex caches and logs
+restic backup "${VOLUMES_DIR}" \
+    --tag systemd.timer \
+    --exclude "${VOLUMES_DIR}/plex-config/_data/Library/Application Support/Plex Media Server/Cache" \
+    --exclude "${VOLUMES_DIR}/plex-config/_data/Library/Application Support/Plex Media Server/Codecs" \
+    --exclude "${VOLUMES_DIR}/plex-config/_data/Library/Application Support/Plex Media Server/Crash Reports" \
+    --exclude "${VOLUMES_DIR}/plex-config/_data/Library/Application Support/Plex Media Server/Diagnostics" \
+    --exclude "${VOLUMES_DIR}/plex-config/_data/Library/Application Support/Plex Media Server/Drivers" \
+    --exclude "${VOLUMES_DIR}/plex-config/_data/Library/Application Support/Plex Media Server/Logs" \
+    --exclude "${VOLUMES_DIR}/plex-config/_data/Library/Application Support/Plex Media Server/Updates"
+
+# Apply retention policy (3 daily, 4 weekly, 6 monthly) and prune unused data
+restic forget \
+    --keep-daily 3 \
+    --keep-weekly 4 \
+    --keep-monthly 6 \
+    --prune

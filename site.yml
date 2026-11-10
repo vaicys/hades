@@ -6,7 +6,7 @@
     media_root: /media/main
 
   vars_files:
-    - vars/cloudflared.yml
+    - vars/secrets.yml
 
   tasks:
     - import_tasks: tasks/common.yml
@@ -20,3 +20,4 @@
     - import_tasks: tasks/plex.yml
     - import_tasks: tasks/nfs.yml
     - import_tasks: tasks/firewall.yml
+    - import_tasks: tasks/container-backup.yml

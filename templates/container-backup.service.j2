@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup Podman Container Volumes with Restic
+After=local-fs.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/restic/env
+CacheDirectory=restic
+PrivateMounts=yes
+ExecStart=/usr/local/sbin/container-backup

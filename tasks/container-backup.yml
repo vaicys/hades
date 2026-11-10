@@ -1,0 +1,121 @@
+---
+# Container volumes (/var/lib/containers/storage/volumes) are backed up daily
+# to an encrypted Restic repository at /var/backups/containers (credentials in
+# /etc/restic/env).
+#
+# List snapshots:
+#   set -a && source /etc/restic/env && set +a && restic snapshots
+#
+# Restore a volume (e.g. SERVICE=home-assistant.service,
+# VOL=home-assistant-config):
+#   set -a && source /etc/restic/env && set +a
+#   systemctl stop $SERVICE
+#   rm -rf /var/lib/containers/storage/volumes/$VOL/_data
+#   restic restore latest --target / \
+#     --include /var/lib/containers/storage/volumes/$VOL
+#   restorecon -R /var/lib/containers/storage/volumes/$VOL
+#   systemctl start $SERVICE
+
+- name: ensure restic and btrfs-progs are installed
+  dnf:
+    name:
+      - restic
+      - btrfs-progs
+    state: present
+
+- name: ensure restic configuration directory exists
+  file:
+    path: /etc/restic
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: configure restic repository password
+  copy:
+    dest: /etc/restic/password
+    content: "{{ restic_password }}\n"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: configure restic environment file
+  copy:
+    dest: /etc/restic/env
+    content: |
+      RESTIC_REPOSITORY=/var/backups/containers
+      RESTIC_PASSWORD_FILE=/etc/restic/password
+      RESTIC_CACHE_DIR=/var/cache/restic
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: ensure local backup directory exists
+  file:
+    path: /var/backups/containers
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: check if restic repository is initialized
+  stat:
+    path: /var/backups/containers/config
+  register: restic_repo_config
+
+- name: initialize restic repository if not already initialized
+  command:
+    cmd: restic init
+  environment:
+    RESTIC_REPOSITORY: /var/backups/containers
+    RESTIC_PASSWORD_FILE: /etc/restic/password
+  when:
+    - not ansible_check_mode
+    - not restic_repo_config.stat.exists
+
+- name: deploy container-backup script
+  template:
+    src: templates/container-backup.sh.j2
+    dest: /usr/local/sbin/container-backup
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: deploy container-backup systemd service
+  template:
+    src: templates/container-backup.service.j2
+    dest: /etc/systemd/system/container-backup.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: backup_service
+
+- name: deploy container-backup systemd timer
+  template:
+    src: templates/container-backup.timer.j2
+    dest: /etc/systemd/system/container-backup.timer
+    owner: root
+    group: root
+    mode: "0644"
+  register: backup_timer
+
+- name: reload systemd daemon if backup units changed
+  systemd:
+    daemon_reload: true
+  when: backup_service.changed or backup_timer.changed
+
+- name: enable and start container-backup timer
+  systemd:
+    name: container-backup.timer
+    state: started
+    enabled: true
+  when: not ansible_check_mode
+
+- name: run initial container backup when repository is newly initialized
+  systemd:
+    name: container-backup.service
+    state: started
+  when:
+    - not ansible_check_mode
+    - not restic_repo_config.stat.exists
