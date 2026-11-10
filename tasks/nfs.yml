@@ -43,19 +43,6 @@
     cmd: exportfs -rav
   when: nfs_exports.changed
 
-- name: allow nfs server in firewall
-  vars:
-    services:
-      - nfs
-      - rpc-bind
-      - mountd
-  firewalld:
-    service: "{{ item }}"
-    permanent: true
-    state: enabled
-    immediate: true
-  loop: "{{ services }}"
-
 - name: ensure nfs-server is running
   service:
     name: nfs-server

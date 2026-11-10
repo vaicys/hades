@@ -10,14 +10,7 @@
     state: latest
 
 - name: ensure cockpit socket is enabled and running
-  systemd_service:
+  systemd:
     name: cockpit.socket
     state: started
     enabled: true
-
-- name: allow cockpit in firewall
-  firewalld:
-    service: cockpit
-    permanent: true
-    immediate: true
-    state: enabled

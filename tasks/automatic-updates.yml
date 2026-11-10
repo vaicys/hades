@@ -33,12 +33,12 @@
   register: dnf_timer_override
 
 - name: reload systemd daemon if dnf5-automatic timer changed
-  systemd_service:
+  systemd:
     daemon_reload: true
   when: dnf_timer_override.changed
 
 - name: enable dnf5-automatic timer
-  systemd_service:
+  systemd:
     name: dnf5-automatic.timer
     state: started
     enabled: true

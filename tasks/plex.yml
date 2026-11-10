@@ -40,19 +40,12 @@
   register: plex_quadlet
 
 - name: reload systemd daemon to generate quadlet units
-  systemd_service:
+  systemd:
     daemon_reload: true
   when: plex_volume_quadlet.changed or plex_quadlet.changed
 
 - name: ensure plex container service is started
-  systemd_service:
+  systemd:
     name: plex.service
     state: "{{ 'restarted' if (plex_volume_quadlet.changed or plex_quadlet.changed) else 'started' }}"
   when: not ansible_check_mode
-
-- name: allow plex media server in firewall
-  firewalld:
-    service: plex
-    permanent: true
-    immediate: true
-    state: enabled

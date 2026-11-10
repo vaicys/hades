@@ -10,7 +10,7 @@ $ ansible-playbook -i "[FQDN]," [--vault-password-file VAULT_KEY] [--private-key
 
 To work with encrypted variable files:
 ```
-$ ansible-vault encrypt --vault-password-file ~/vault_key [filename]
+$ ansible-vault encrypt --vault-password-file ~/vault-key [filename]
 
-$ ansible-vault decrypt --vault-password-file ~/vault_key [filename]
+$ ansible-vault decrypt --vault-password-file ~/vault-key [filename]
 ```

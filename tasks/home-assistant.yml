@@ -51,37 +51,19 @@
   register: ha_quadlet
 
 - name: reload systemd daemon to generate home-assistant and matter quadlet units
-  systemd_service:
+  systemd:
     daemon_reload: true
   when:
     - matter_volume_quadlet.changed or matter_quadlet.changed or ha_volume_quadlet.changed or ha_quadlet.changed
 
 - name: ensure matter-server container service is started
-  systemd_service:
+  systemd:
     name: matter-server.service
     state: "{{ 'restarted' if (matter_volume_quadlet.changed or matter_quadlet.changed) else 'started' }}"
   when: not ansible_check_mode
 
 - name: ensure home-assistant container service is started
-  systemd_service:
+  systemd:
     name: home-assistant.service
     state: "{{ 'restarted' if (ha_volume_quadlet.changed or ha_quadlet.changed) else 'started' }}"
   when: not ansible_check_mode
-
-- name: allow home-assistant ports in firewall
-  firewalld:
-    port: "{{ item }}"
-    permanent: true
-    immediate: true
-    state: enabled
-  loop:
-    - 8123/tcp # Home Assistant Web UI & API
-    - 1400/tcp # Sonos UPnP event subscription callbacks (SoCo)
-    - 1900/udp # SSDP / UPnP device discovery
-
-- name: allow mdns in firewall for home-assistant device discovery
-  firewalld:
-    service: mdns
-    permanent: true
-    immediate: true
-    state: enabled

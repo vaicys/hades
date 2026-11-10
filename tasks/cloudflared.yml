@@ -28,12 +28,12 @@
   register: cloudflared_quadlet
 
 - name: reload systemd daemon to generate cloudflared quadlet unit
-  systemd_service:
+  systemd:
     daemon_reload: true
   when: cloudflared_quadlet.changed
 
 - name: ensure cloudflared container service is started
-  systemd_service:
+  systemd:
     name: cloudflared.service
     state: "{{ 'restarted' if (cloudflared_quadlet.changed or (cloudflared_secret_updated.changed | default(false))) else 'started' }}"
   when: not ansible_check_mode

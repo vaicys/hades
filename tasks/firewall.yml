@@ -1,0 +1,99 @@
+---
+- name: gather current firewall configuration
+  firewalld_info:
+    zones:
+      - FedoraServer
+      - trusted
+  register: firewall_state
+
+- name: reconcile firewall configuration
+  vars:
+    firewall_default_zone: "{{ firewall_state.firewalld_info.default_zone }}"
+
+    # Services allowed in the default zone (FedoraServer)
+    firewall_allowed_services:
+      # Base system
+      - ssh
+      - dhcpv6-client
+      # Home Assistant device discovery
+      - mdns
+      # Plex Media Server
+      - plex
+      # NFS file sharing
+      - nfs
+      - rpc-bind
+      - mountd
+
+    # Ports allowed in the default zone (FedoraServer)
+    firewall_allowed_ports:
+      # Tailscale WireGuard direct connections
+      - 41641/udp
+      # Home Assistant Web UI & API
+      - 8123/tcp
+      # Home Assistant Sonos UPnP event subscription callbacks
+      - 1400/tcp
+      # Home Assistant SSDP / UPnP device discovery
+      - 1900/udp
+
+    # Interfaces assigned to the trusted zone
+    firewall_trusted_interfaces:
+      # Tailscale subnet routing interface
+      - tailscale0
+
+    firewall_current_services: "{{ firewall_state.firewalld_info.zones[firewall_default_zone].services | default([]) }}"
+    firewall_current_ports: "{{ firewall_state.firewalld_info.zones[firewall_default_zone].ports | default([]) | map('join', '/') | list }}"
+    firewall_current_trusted_interfaces: "{{ firewall_state.firewalld_info.zones['trusted'].interfaces | default([]) }}"
+  block:
+    - name: enable allowed firewall services
+      firewalld:
+        zone: "{{ firewall_default_zone }}"
+        service: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      loop: "{{ firewall_allowed_services }}"
+
+    - name: disable unmanaged firewall services
+      firewalld:
+        zone: "{{ firewall_default_zone }}"
+        service: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: disabled
+      loop: "{{ firewall_current_services | difference(firewall_allowed_services) }}"
+
+    - name: enable allowed firewall ports
+      firewalld:
+        zone: "{{ firewall_default_zone }}"
+        port: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      loop: "{{ firewall_allowed_ports }}"
+
+    - name: disable unmanaged firewall ports
+      firewalld:
+        zone: "{{ firewall_default_zone }}"
+        port: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: disabled
+      loop: "{{ firewall_current_ports | difference(firewall_allowed_ports) }}"
+
+    - name: trust allowed interfaces in firewall
+      firewalld:
+        zone: trusted
+        interface: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: enabled
+      loop: "{{ firewall_trusted_interfaces }}"
+
+    - name: untrust unmanaged interfaces in firewall
+      firewalld:
+        zone: trusted
+        interface: "{{ item }}"
+        permanent: true
+        immediate: true
+        state: disabled
+      loop: "{{ firewall_current_trusted_interfaces | difference(firewall_trusted_interfaces) }}"

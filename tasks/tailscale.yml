@@ -55,27 +55,12 @@
   register: tailscale_quadlet
 
 - name: reload systemd daemon to generate tailscale quadlet units
-  systemd_service:
+  systemd:
     daemon_reload: true
   when: tailscale_volume_quadlet.changed or tailscale_quadlet.changed
 
 - name: ensure tailscale container service is started
-  systemd_service:
+  systemd:
     name: tailscale.service
     state: "{{ 'restarted' if (tailscale_volume_quadlet.changed or tailscale_quadlet.changed or (tailscale_secret_updated.changed | default(false))) else 'started' }}"
   when: not ansible_check_mode
-
-- name: allow tailscale wireguard port in firewall for direct connections
-  firewalld:
-    port: 41641/udp
-    permanent: true
-    immediate: true
-    state: enabled
-
-- name: trust tailscale0 interface in firewall for subnet routing
-  firewalld:
-    zone: trusted
-    interface: tailscale0
-    permanent: true
-    immediate: true
-    state: enabled

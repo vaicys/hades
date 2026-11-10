@@ -46,12 +46,12 @@
   register: qbittorrent_quadlet
 
 - name: reload systemd daemon to generate qbittorrent quadlet units
-  systemd_service:
+  systemd:
     daemon_reload: true
   when: qbittorrent_volume_quadlet.changed or qbittorrent_quadlet.changed
 
 - name: ensure qbittorrent container service is started
-  systemd_service:
+  systemd:
     name: qbittorrent.service
     state: "{{ 'restarted' if (qbittorrent_volume_quadlet.changed or qbittorrent_quadlet.changed) else 'started' }}"
   when: not ansible_check_mode
@@ -89,7 +89,7 @@
 
 - name: configure watched folders
   template:
-    src: templates/watched_folders.json.j2
+    src: templates/watched-folders.json.j2
     dest: "{{ qbittorrent_vol_mountpoint.stdout }}/qBittorrent/watched_folders.json"
     owner: qbittorrent
     group: torrent-users
@@ -100,7 +100,7 @@
     - qbittorrent_vol_mountpoint.stdout | length > 0
 
 - name: restart qbittorrent container if watched folders changed
-  systemd_service:
+  systemd:
     name: qbittorrent.service
     state: restarted
   when:

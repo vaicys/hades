@@ -8,7 +8,7 @@
     state: latest
 
 - name: enable podman socket for cockpit-podman
-  systemd_service:
+  systemd:
     name: podman.socket
     state: started
     enabled: true
@@ -30,7 +30,7 @@
     mode: "0755"
 
 - name: enable podman-auto-update timer for seamless upstream updates
-  systemd_service:
+  systemd:
     name: podman-auto-update.timer
     state: started
     enabled: true
