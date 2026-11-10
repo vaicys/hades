@@ -6,7 +6,6 @@
     media_root: /media/main
 
   vars_files:
-    - vars/users.yml
     - vars/cloudflared.yml
 
   tasks:
@@ -19,6 +18,5 @@
     - import_tasks: tasks/home-assistant.yml
     - import_tasks: tasks/qbittorrent.yml
     - import_tasks: tasks/plex.yml
-    - import_tasks: tasks/users.yml
     - import_tasks: tasks/nfs.yml
     - import_tasks: tasks/firewall.yml
