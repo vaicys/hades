@@ -1,7 +1,11 @@
 ---
 # Container volumes (/var/lib/containers/storage/volumes) are backed up daily
-# to an encrypted Restic repository at /var/backups/containers (credentials in
-# /etc/restic/env).
+# to an encrypted Restic repository at /var/backups/containers and synced to
+# OneDrive (/Backups/containers via the `onedrive-backups:` rclone alias).
+#
+# If /var/backups/containers is lost, pull it back from OneDrive first:
+#   rclone --config /etc/restic/rclone.conf sync \
+#     onedrive-backups: /var/backups/containers
 #
 # List snapshots:
 #   set -a && source /etc/restic/env && set +a && restic snapshots
@@ -16,10 +20,11 @@
 #   restorecon -R /var/lib/containers/storage/volumes/$VOL
 #   systemctl start $SERVICE
 
-- name: ensure restic and btrfs-progs are installed
+- name: ensure restic, rclone, and btrfs-progs are installed
   dnf:
     name:
       - restic
+      - rclone
       - btrfs-progs
     state: present
 
@@ -38,6 +43,16 @@
     owner: root
     group: root
     mode: "0600"
+  no_log: true
+
+- name: configure rclone for onedrive backup sync
+  template:
+    src: templates/rclone.conf.j2
+    dest: /etc/restic/rclone.conf
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
   no_log: true
 
 - name: configure restic environment file
