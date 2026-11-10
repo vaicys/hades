@@ -47,5 +47,8 @@
 - name: ensure plex container service is started
   systemd:
     name: plex.service
-    state: "{{ 'restarted' if (plex_volume_quadlet.changed or plex_quadlet.changed) else 'started' }}"
+    state: >-
+      {{ 'restarted' if (
+        plex_volume_quadlet.changed or plex_quadlet.changed
+      ) else 'started' }}
   when: not ansible_check_mode

@@ -40,9 +40,15 @@
       # Tailscale subnet routing interface
       - tailscale0
 
-    firewall_current_services: "{{ firewall_state.firewalld_info.zones[firewall_default_zone].services | default([]) }}"
-    firewall_current_ports: "{{ firewall_state.firewalld_info.zones[firewall_default_zone].ports | default([]) | map('join', '/') | list }}"
-    firewall_current_trusted_interfaces: "{{ firewall_state.firewalld_info.zones['trusted'].interfaces | default([]) }}"
+    firewall_current_services: >-
+      {{ firewall_state.firewalld_info.zones[firewall_default_zone].services
+      | default([]) }}
+    firewall_current_ports: >-
+      {{ firewall_state.firewalld_info.zones[firewall_default_zone].ports
+      | default([]) | map('join', '/') | list }}
+    firewall_current_trusted_interfaces: >-
+      {{ firewall_state.firewalld_info.zones['trusted'].interfaces
+      | default([]) }}
   block:
     - name: enable allowed firewall services
       firewalld:
@@ -60,7 +66,8 @@
         permanent: true
         immediate: true
         state: disabled
-      loop: "{{ firewall_current_services | difference(firewall_allowed_services) }}"
+      loop: >-
+        {{ firewall_current_services | difference(firewall_allowed_services) }}
 
     - name: enable allowed firewall ports
       firewalld:
@@ -96,4 +103,6 @@
         permanent: true
         immediate: true
         state: disabled
-      loop: "{{ firewall_current_trusted_interfaces | difference(firewall_trusted_interfaces) }}"
+      loop: >-
+        {{ firewall_current_trusted_interfaces
+        | difference(firewall_trusted_interfaces) }}

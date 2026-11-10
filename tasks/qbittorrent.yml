@@ -53,12 +53,17 @@
 - name: ensure qbittorrent container service is started
   systemd:
     name: qbittorrent.service
-    state: "{{ 'restarted' if (qbittorrent_volume_quadlet.changed or qbittorrent_quadlet.changed) else 'started' }}"
+    state: >-
+      {{ 'restarted' if (
+        qbittorrent_volume_quadlet.changed or qbittorrent_quadlet.changed
+      ) else 'started' }}
   when: not ansible_check_mode
 
 - name: get qbittorrent-config volume mountpoint
   command:
-    cmd: podman volume inspect qbittorrent-config --format "{{ '{{' }}.Mountpoint{{ '}}' }}"
+    cmd: >-
+      podman volume inspect qbittorrent-config
+      --format "{{ '{{' }}.Mountpoint{{ '}}' }}"
   register: qbittorrent_vol_mountpoint
   changed_when: false
   failed_when: false
@@ -90,7 +95,8 @@
 - name: configure watched folders
   template:
     src: templates/watched-folders.json.j2
-    dest: "{{ qbittorrent_vol_mountpoint.stdout }}/qBittorrent/watched_folders.json"
+    dest: >-
+      {{ qbittorrent_vol_mountpoint.stdout }}/qBittorrent/watched_folders.json
     owner: qbittorrent
     group: torrent-users
     mode: "0664"

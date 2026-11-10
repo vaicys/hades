@@ -1,7 +1,9 @@
 ---
 - name: inspect existing cloudflared podman secret
   command:
-    cmd: podman secret inspect --showsecret cloudflared-token --format "{{ '{{' }}.SecretData{{ '}}' }}"
+    cmd: >-
+      podman secret inspect --showsecret cloudflared-token
+      --format "{{ '{{' }}.SecretData{{ '}}' }}"
   register: cloudflared_existing_secret
   changed_when: false
   failed_when: false
@@ -14,7 +16,9 @@
     stdin: "{{ cloudflared_tunnel_token }}"
   when:
     - not ansible_check_mode
-    - cloudflared_existing_secret.rc != 0 or cloudflared_existing_secret.stdout != cloudflared_tunnel_token
+    - >-
+      cloudflared_existing_secret.rc != 0 or
+      cloudflared_existing_secret.stdout != cloudflared_tunnel_token
   register: cloudflared_secret_updated
   no_log: true
 
@@ -35,5 +39,9 @@
 - name: ensure cloudflared container service is started
   systemd:
     name: cloudflared.service
-    state: "{{ 'restarted' if (cloudflared_quadlet.changed or (cloudflared_secret_updated.changed | default(false))) else 'started' }}"
+    state: >-
+      {{ 'restarted' if (
+        cloudflared_quadlet.changed or
+        (cloudflared_secret_updated.changed | default(false))
+      ) else 'started' }}
   when: not ansible_check_mode

@@ -1,5 +1,7 @@
 ---
-- name: enable ipv6 router advertisements and route info for thread border router
+- name: enable ipv6 router advertisements and route info for thread
+  vars:
+    default_iface: "{{ ansible_facts['default_ipv4']['interface'] }}"
   sysctl:
     name: "{{ item.name }}"
     value: "{{ item.value }}"
@@ -9,10 +11,11 @@
   loop:
     - { name: "net.ipv6.conf.all.accept_ra", value: "2" }
     - { name: "net.ipv6.conf.default.accept_ra", value: "2" }
-    - { name: "net.ipv6.conf.{{ ansible_facts['default_ipv4']['interface'] }}.accept_ra", value: "2" }
+    - { name: "net.ipv6.conf.{{ default_iface }}.accept_ra", value: "2" }
     - { name: "net.ipv6.conf.all.accept_ra_rt_info_max_plen", value: "64" }
     - { name: "net.ipv6.conf.default.accept_ra_rt_info_max_plen", value: "64" }
-    - { name: "net.ipv6.conf.{{ ansible_facts['default_ipv4']['interface'] }}.accept_ra_rt_info_max_plen", value: "64" }
+    - name: "net.ipv6.conf.{{ default_iface }}.accept_ra_rt_info_max_plen"
+      value: "64"
 
 - name: deploy matter-server-data quadlet volume unit
   template:
@@ -50,20 +53,29 @@
     mode: "0644"
   register: ha_quadlet
 
-- name: reload systemd daemon to generate home-assistant and matter quadlet units
+- name: reload systemd daemon to generate home-assistant and matter units
   systemd:
     daemon_reload: true
-  when:
-    - matter_volume_quadlet.changed or matter_quadlet.changed or ha_volume_quadlet.changed or ha_quadlet.changed
+  when: >-
+    matter_volume_quadlet.changed or
+    matter_quadlet.changed or
+    ha_volume_quadlet.changed or
+    ha_quadlet.changed
 
 - name: ensure matter-server container service is started
   systemd:
     name: matter-server.service
-    state: "{{ 'restarted' if (matter_volume_quadlet.changed or matter_quadlet.changed) else 'started' }}"
+    state: >-
+      {{ 'restarted' if (
+        matter_volume_quadlet.changed or matter_quadlet.changed
+      ) else 'started' }}
   when: not ansible_check_mode
 
 - name: ensure home-assistant container service is started
   systemd:
     name: home-assistant.service
-    state: "{{ 'restarted' if (ha_volume_quadlet.changed or ha_quadlet.changed) else 'started' }}"
+    state: >-
+      {{ 'restarted' if (
+        ha_volume_quadlet.changed or ha_quadlet.changed
+      ) else 'started' }}
   when: not ansible_check_mode
