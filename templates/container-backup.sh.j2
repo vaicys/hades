@@ -41,6 +41,6 @@ restic forget \
     --keep-monthly 6 \
     --prune
 
-# Sync the local encrypted Restic repository to OneDrive (/Backups/containers)
+# Sync the local encrypted Restic repository to OneDrive (/Backups/Containers)
 rclone --config /etc/restic/rclone.conf sync \
     /var/backups/containers onedrive-backups:

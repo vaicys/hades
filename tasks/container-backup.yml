@@ -1,7 +1,7 @@
 ---
 # Container volumes (/var/lib/containers/storage/volumes) are backed up daily
 # to an encrypted Restic repository at /var/backups/containers and synced to
-# OneDrive (/Backups/containers via the `onedrive-backups:` rclone alias).
+# OneDrive (/Backups/Containers via the `onedrive-backups:` rclone alias).
 #
 # If /var/backups/containers is lost, pull it back from OneDrive first:
 #   rclone --config /etc/restic/rclone.conf sync \
