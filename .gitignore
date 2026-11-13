@@ -2,3 +2,11 @@ ansible*
 secrets*
 vault*
 hosts*
+*.key
+*.pem
+*id_rsa*
+*id_ed25519*
+*.tar*
+*.gpg
+*.retry
+vars/
